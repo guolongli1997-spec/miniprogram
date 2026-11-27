@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "flytripvisa",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "flytripvisa-db",
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "FlyTripVisa",
+    "WHATSAPP_LINK": "https://wa.me/message/SD44CN7CQKC7K1"
+  }
+  /*
+  Optional secrets (set with `wrangler secret put <NAME>`):
+  - ADMIN_PASSWORD   -> password for /admin.html dashboard
+  - OPENAI_API_KEY   -> optional external LLM fallback for chat
+  */
+}
