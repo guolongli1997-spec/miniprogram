@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - FlyTripVisa</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root { --primary:#e11d2c; --bg:#0b0f1a; --card:#141a26; --text:#e8edf5; --muted:#8a9ab8; --border:#243044; --green:#07c160; }
+body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); padding:24px; }
+.container { max-width:960px; margin:0 auto; }
+h1 { font-size:22px; font-weight:900; margin-bottom:4px; }
+h1 span { color:var(--primary); }
+.sub { font-size:12px; color:var(--muted); margin-bottom:20px; }
+.login-card { background:var(--card); border-radius:16px; padding:24px; max-width:420px; }
+.input { width:100%; background:#0e1420; border:1px solid var(--border); border-radius:10px; padding:12px; color:#fff; font-size:14px; outline:none; margin-bottom:12px; }
+.input:focus { border-color:var(--primary); }
+.btn { background:var(--primary); border:none; color:#fff; font-weight:800; padding:12px 18px; border-radius:10px; cursor:pointer; font-size:13px; }
+.btn.sec { background:#1d2636; }
+.err { color:#ef4444; font-size:12px; margin-bottom:10px; display:none; } .err.show{display:block}
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+.stat { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; text-align:center; }
+.stat .n { font-size:24px; font-weight:900; } .stat .l { font-size:11px; color:var(--muted); margin-top:4px; }
+.tabs { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.tabs .btn.active { background:var(--primary); }
+table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; font-size:12px; }
+th { background:#0e1420; text-align:left; padding:10px 12px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+td { padding:10px 12px; border-top:1px solid var(--border); vertical-align:top; }
+select { background:#0e1420; color:#fff; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:11px; }
+.badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; }
+.badge.pending{background:#3a2a00;color:#f5b042}.badge.processing{background:#0d1a2e;color:#4f9fff}
+.badge.approved{background:#0a2018;color:#07c160}.badge.rejected{background:#2a0d10;color:#ff4d5a}
+.hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>FlyTrip<span>Visa</span> Admin</h1>
+  <div class="sub">Dashboard · users, applications & chat logs (D1)</div>
+
+  <div id="loginCard" class="login-card">
+    <div class="err" id="err"></div>
+    <input type="password" id="key" class="input" placeholder="Admin password (env ADMIN_PASSWORD)">
+    <button class="btn" id="loginBtn">Sign In</button>
+    <p style="font-size:11px;color:#667;margin-top:12px">Local dev default: flytrip-admin-2026</p>
+  </div>
+
+  <div id="dash" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="tabs">
+        <button class="btn active" data-view="apps">Applications</button>
+        <button class="btn sec" data-view="users">Users</button>
+        <button class="btn sec" data-view="msgs">Chat Logs</button>
+      </div>
+      <button class="btn sec" id="logoutBtn">Logout</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div id="tableWrap"></div>
+  </div>
+</div>
+<script>
+let key = sessionStorage.getItem('flytrip_admin_key') || '';
+let current = 'apps';
+
+const el = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api = async (path) => {
+  const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(key));
+  return res.json();
+};
+
+async function tryLogin() {
+  key = el('key').value.trim();
+  const data = await api('/api/admin/summary');
+  if (data.ok) {
+    sessionStorage.setItem('flytrip_admin_key', key);
+    el('loginCard').classList.add('hidden');
+    el('dash').classList.remove('hidden');
+    renderStats(data.data);
+    renderView();
+  } else { el('err').textContent = data.error || 'Login failed'; el('err').classList.add('show'); }
+}
+
+function renderStats(s) {
+  el('stats').innerHTML = `
+    <div class="stat"><div class="n">${s.users}</div><div class="l">Users</div></div>
+    <div class="stat"><div class="n">${s.applications}</div><div class="l">Applications</div></div>
+    <div class="stat"><div class="n">${s.chat_messages}</div><div class="l">Chat Messages</div></div>`;
+}
+
+async function renderView() {
+  if (current === 'apps') {
+    const { data } = await api('/api/admin/applications');
+    el('tableWrap').innerHTML = `<table><thead><tr><th>#</th><th>Email</th><th>Service</th><th>Details</th><th>Status</th><th>Date</th></tr></thead><tbody>` +
+      (data || []).map(a => `<tr><td>${a.id}</td><td>${esc(a.user_email)}</td><td>${esc(a.service)}</td><td>${esc(a.details).slice(0,80)}</td>
+      <td><span class="badge ${a.status}">${a.status}</span><br><select data-id="${a.id}" class="st">
+        ${['pending','processing','approved','rejected'].map(s=>`<option ${s===a.status?'selected':''}>${s}</option>`).join('')}
+      </select></td><td>${esc(a.created_at)}</td></tr>`).join('') + `</tbody></table>`;
+    el('tableWrap').querySelectorAll('.st').forEach(sel => sel.addEventListener('change', async () => {
+      await fetch(`/api/admin/applications?id=${sel.dataset.id}&status=${sel.value}&key=${encodeURIComponent(key)}`, { method: 'PATCH' });
+      renderView();
+    }));
+  } else if (current === 'users') {
+    const { data } = await api('/api/admin/users');
+    el('tableWrap').innerHTML = `<table><thead><tr><th>#</th><th>Email</th><th>Name</th><th>Joined</th></tr></thead><tbody>` +
+      (data || []).map(u => `<tr><td>${u.id}</td><td>${esc(u.email)}</td><td>${esc(u.name)}</td><td>${esc(u.created_at)}</td></tr>`).join('') + `</tbody></table>`;
+  } else {
+    const { data } = await api('/api/admin/messages');
+    el('tableWrap').innerHTML = `<table><thead><tr><th>Session</th><th>Role</th><th>Content</th><th>Time</th></tr></thead><tbody>` +
+      (data || []).map(m => `<tr><td>${esc(m.session_id).slice(0,8)}…</td><td>${m.role}</td><td>${esc(m.content).slice(0,120)}</td><td>${esc(m.created_at)}</td></tr>`).join('') + `</tbody></table>`;
+  }
+}
+
+el('loginBtn').addEventListener('click', tryLogin);
+el('key').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+el('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem('flytrip_admin_key'); location.reload(); });
+document.querySelectorAll('.tabs .btn[data-view]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs .btn[data-view]').forEach(x => { x.classList.remove('active'); x.classList.add('sec'); });
+  b.classList.add('active'); b.classList.remove('sec');
+  current = b.dataset.view; renderView();
+}));
+
+if (key) { el('key').value = key; tryLogin(); }
+</script>
+</body>
+</html>

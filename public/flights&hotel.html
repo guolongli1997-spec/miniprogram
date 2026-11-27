@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flights & Hotels - FlyTripVisa</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root { --primary:#e11d2c; --gold:#f5b042; --bg:#000; --card:#141414; --text:#f0f0f0; --muted:#8a9ab8; }
+body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); max-width:500px; margin:0 auto; padding-bottom:40px; }
+.header { background:linear-gradient(125deg,#0d1a2e,#b81222); padding:16px; text-align:center; position:relative; }
+.header a { color:#fff; text-decoration:none; position:absolute; left:16px; font-size:20px; }
+.header h1 { font-size:20px; font-weight:900; color:#fff; } .header p { font-size:11px; color:rgba(255,255,255,.9); margin-top:4px; }
+.card { background:var(--card); border-radius:20px; margin:12px 10px; padding:16px; }
+.card h2 { font-size:15px; font-weight:800; margin-bottom:10px; }
+.row { display:flex; gap:8px; }
+.input { width:100%; background:#1e1e1e; border:1px solid #333; border-radius:10px; padding:11px 14px; color:#fff; font-size:12px; margin-bottom:10px; outline:none; }
+.input:focus { border-color:var(--primary); }
+label { font-size:10px; color:var(--muted); display:block; margin-bottom:4px; }
+.btn { background:linear-gradient(90deg,var(--primary),#ff4050); border:none; width:100%; padding:12px; border-radius:40px; color:#fff; font-size:13px; font-weight:800; cursor:pointer; }
+.msg { font-size:12px; margin-bottom:8px; display:none; } .msg.show{display:block}
+.ok{color:#07c160} .er{color:#ef4444}
+.perks { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 10px 10px; }
+.perk { background:#1a1a1a; border-radius:14px; padding:12px 10px; text-align:center; border:1px solid #2a1515; }
+.perk .i { font-size:22px; } .perk .t { font-size:11px; font-weight:700; margin-top:4px; } .perk .d { font-size:9px; color:var(--muted); margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="header"><a href="/">←</a><h1>✈️ Flights & Hotels</h1><p>Global airlines & 1M+ hotels — best price guarantee</p></div>
+<div class="card">
+  <h2>🎫 Booking Request</h2>
+  <div class="msg ok" id="ok"></div><div class="msg er" id="er"></div>
+  <label>Booking type</label>
+  <select class="input" id="type">
+    <option>✈️ Flight</option><option>🏨 Hotel</option><option>✈️🏨 Flight + Hotel Package</option>
+  </select>
+  <div class="row">
+    <div style="flex:1"><label>From / Destination</label><input class="input" id="route" placeholder="e.g. Dhaka → Dubai"></div>
+  </div>
+  <div class="row">
+    <div style="flex:1"><label>Travel date</label><input class="input" id="date" type="date"></div>
+    <div style="flex:1"><label>Passengers / Rooms</label><input class="input" id="pax" placeholder="1"></div>
+  </div>
+  <input class="input" id="email" type="email" placeholder="Email address">
+  <button class="btn" id="bookBtn">Get Best Price Quote 💰</button>
+</div>
+<div class="perks">
+  <div class="perk"><div class="i">💳</div><div class="t">Secure Payment</div><div class="d">Cards, bank & crypto</div></div>
+  <div class="perk"><div class="i">⚡</div><div class="t">Instant Ticketing</div><div class="d">E-ticket in minutes</div></div>
+  <div class="perk"><div class="i">🕐</div><div class="t">24/7 Support</div><div class="d">AI + human agents</div></div>
+  <div class="perk"><div class="i">🌍</div><div class="t">Global Coverage</div><div class="d">300+ airlines, 1M+ hotels</div></div>
+</div>
+<script>
+const WA = 'https://wa.me/message/SD44CN7CQKC7K1';
+document.getElementById('bookBtn').addEventListener('click', async () => {
+  const okEl=document.getElementById('ok'), erEl=document.getElementById('er');
+  okEl.classList.remove('show'); erEl.classList.remove('show');
+  const email = document.getElementById('email').value.trim();
+  const route = document.getElementById('route').value.trim();
+  if (!email || !route) { erEl.textContent='Please fill destination and email.'; erEl.classList.add('show'); return; }
+  const service = document.getElementById('type').value + ': ' + route;
+  try {
+    const res = await fetch('/api/apply', { method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ email, service, details: 'Date: '+document.getElementById('date').value+' · Pax: '+document.getElementById('pax').value }) });
+    const data = await res.json();
+    if (data.ok) { okEl.textContent='✅ Request #'+data.data.id+' received! A consultant will send you the best quote shortly.'; okEl.classList.add('show'); setTimeout(()=>location.href=WA, 1200); }
+    else { erEl.textContent=data.error||'Submission failed.'; erEl.classList.add('show'); }
+  } catch { erEl.textContent='Network error.'; erEl.classList.add('show'); }
+});
+</script>
+</body>
+</html>
