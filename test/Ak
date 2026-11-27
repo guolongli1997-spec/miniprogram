@@ -1,0 +1,42 @@
+// Ak — basic smoke test for FlyTripVisa worker routes.
+// Run with: npx wrangler dev  (then)  npm test  (vitest + @cloudflare/vitest-pool-workers)
+import { describe, it, expect } from 'vitest';
+import worker from '../src/index';
+
+interface MF { fetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>; }
+const env: any = {
+  // Minimal mock bindings for smoke tests
+  ASSETS: { fetch: () => new Response('<html>index</html>', { headers: { 'content-type': 'text/html' } }) },
+  AI: { run: async () => ({ response: 'Mock AI reply' }) },
+  DB: {
+    prepare: () => ({ bind: () => ({ run: async () => ({ meta: { last_row_id: 1 } }), first: async () => null, all: async () => ({ results: [] }) }) }),
+    batch: async () => [],
+  },
+  APP_NAME: 'FlyTripVisa',
+  WHATSAPP_LINK: 'https://wa.me/message/SD44CN7CQKC7K1',
+};
+
+describe('FlyTripVisa worker', () => {
+  it('responds to /api/chat', async () => {
+    const req = new Request('https://example.com/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Dubai visa price?' }),
+    });
+    const res = await (worker as unknown as MF).fetch(req, env);
+    expect(res.status).toBe(200);
+    const json: any = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.data.reply).toContain('Mock AI reply');
+  });
+
+  it('rejects empty chat message', async () => {
+    const req = new Request('https://example.com/api/chat', { method: 'POST', body: '{}' });
+    const res = await (worker as unknown as MF).fetch(req, env);
+    expect(res.status).toBe(400);
+  });
+
+  it('requires admin key for admin routes', async () => {
+    const res = await (worker as unknown as MF).fetch(new Request('https://example.com/api/admin/summary'), env);
+    expect(res.status).toBe(401);
+  });
+});
